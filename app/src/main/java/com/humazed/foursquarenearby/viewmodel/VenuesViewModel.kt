@@ -7,8 +7,12 @@ import androidx.lifecycle.MutableLiveData
 import com.humazed.foursquarenearby.SIZE
 import com.humazed.foursquarenearby.api.api
 import com.humazed.foursquarenearby.model.explore.Venue
+import com.humazed.foursquarenearby.persestance.AppDatabase
+import com.humazed.foursquarenearby.persestance.VenueEntity
+import com.humazed.foursquarenearby.persestance.VenuesRepository
 import humazed.github.com.kotlinandroidutils.d
 import humazed.github.com.kotlinandroidutils.er
+import humazed.github.com.kotlinandroidutils.isConnected
 import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -22,19 +26,27 @@ class VenuesViewModel(application: Application) : AndroidViewModel(application) 
 
     private val disposables = CompositeDisposable()
 
-    private val venues = MutableLiveData<List<Pair<Venue, String>>>()
-    private val loadError = MutableLiveData<Boolean>(false)
-    private val loading = MutableLiveData<Boolean>(false)
+    private val venuesRepository =
+        VenuesRepository.getInstance(AppDatabase.getInstance(applicationContext).venuesDoa())
 
-    fun getVenues(): LiveData<List<Pair<Venue, String>>> = venues
+
+    private val loadError = MutableLiveData(false)
+    private val loading = MutableLiveData(false)
+
+    fun getVenues(): LiveData<List<VenueEntity>> = venuesRepository.getAllVenues()
     fun isLoading(): LiveData<Boolean> = loading
     fun hasError(): LiveData<Boolean> = loadError
 
     fun loadVenues(latitude: Float, longitude: Float) {
         d { "latitude = [${latitude}], longitude = [${longitude}]" }
+        if (!applicationContext.isConnected()) {
+            loading.value = false
+            return
+        }
+
         loading.value = true
         disposables.add(
-            applicationContext.api.getVenues("$latitude,$longitude", 1000.0, 2)
+            applicationContext.api.getVenues("$latitude,$longitude", 1000.0, 1)
                 .map { exploreResponse -> exploreResponse.response?.groups?.get(0)?.items?.mapNotNull { it.venue } }
                 .flattenAsObservable { it }
                 .flatMap { venue ->
@@ -52,7 +64,7 @@ class VenuesViewModel(application: Application) : AndroidViewModel(application) 
                     override fun onSuccess(value: List<Pair<Venue, String>>) {
                         loadError.value = false
 
-                        venues.value = value
+                        venuesRepository.saveVenues(value)
 
                         loading.value = false
                     }

@@ -1,26 +1,27 @@
 package com.humazed.foursquarenearby.ui
 
 import com.humazed.foursquarenearby.R
-import com.humazed.foursquarenearby.model.explore.Venue
+import com.humazed.foursquarenearby.persestance.VenueEntity
 import humazed.github.com.kotlinandroidutils.BaseAdapter
 import humazed.github.com.kotlinandroidutils.KBaseViewHolder
 import humazed.github.com.kotlinandroidutils.load
 import kotlinx.android.synthetic.main.row_venue.*
 
 class VenuesAdapter(
-    venues: List<Pair<Venue, String>>
+    venues: List<VenueEntity>
 ) :
-    BaseAdapter<Pair<Venue, String>>(R.layout.row_venue, venues) {
+    BaseAdapter<VenueEntity>(R.layout.row_venue, venues) {
 
-    override fun convert(holder: KBaseViewHolder, item: Pair<Venue, String>) {
+    override fun convert(holder: KBaseViewHolder, item: VenueEntity?) {
         holder.apply {
-            val (venue, imageUrl) = item
+            item?.apply {
+                nameTv.text = name
+                categoryTv.text = category
+                distanceTv.text = distance
 
-            nameTv.text = venue.name
-            categoryTv.text = venue.categories?.get(0)?.shortName ?: ""
-            distanceTv.text = venue.location?.distance?.toString() ?: ""
+                image.load(imageUrl)
+            }
 
-            image.load(imageUrl)
         }
     }
 }

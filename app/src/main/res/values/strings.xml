@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">FoursquareNearBy</string>
+    <string name="no_data_found">No data found!!</string>
+    <string name="loading_error">An Error Occurred While Loading Data!</string>
+</resources>

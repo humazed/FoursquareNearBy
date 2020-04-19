@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.LiveDataReactiveStreams
 import androidx.lifecycle.Observer
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.humazed.foursquarenearby.KEY_LATITUDE
@@ -13,9 +14,11 @@ import com.humazed.foursquarenearby.KEY_LIVE_LOCATION
 import com.humazed.foursquarenearby.KEY_LONGITUDE
 import com.humazed.foursquarenearby.R
 import com.humazed.foursquarenearby.location.CurrentLocationListener
-import com.humazed.foursquarenearby.model.explore.Venue
+import com.humazed.foursquarenearby.persestance.VenueEntity
 import com.humazed.foursquarenearby.viewmodel.VenuesViewModel
 import humazed.github.com.kotlinandroidutils.*
+import io.reactivex.Flowable
+import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.sdk27.coroutines.onCheckedChange
 import org.jetbrains.anko.support.v4.onRefresh
@@ -23,10 +26,13 @@ import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnNeverAskAgain
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import java.util.concurrent.TimeUnit
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
     private val viewModel: VenuesViewModel by viewModels()
+
+    private val disposables = CompositeDisposable()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun setupRecyclerView(venues: List<Pair<Venue, String>>): BaseQuickAdapter<Pair<Venue, String>, KBaseViewHolder> {
+    private fun setupRecyclerView(venues: List<VenueEntity>): BaseQuickAdapter<VenueEntity, KBaseViewHolder> {
         val adapter = VenuesAdapter(venues)
         venuesRecyclerView.adapter = adapter
 
@@ -106,26 +112,30 @@ class MainActivity : AppCompatActivity() {
 
     @NeedsPermission(Manifest.permission.ACCESS_FINE_LOCATION)
     fun getLocationUpdates() {
-        d { "MainActivity.getLocationUpdates" }
-        CurrentLocationListener.getInstance(applicationContext).observe(
-            this,
-            Observer { location ->
-                d { "location = ${location}" }
-                d { "liveLocationSwitch.isActivated = ${liveLocationSwitch.isChecked}" }
-                if (location != null) {
-                    val latitude = location.latitude.toFloat()
-                    val longitude = location.longitude.toFloat()
+        disposables.add(
+            Flowable.fromPublisher(
+                LiveDataReactiveStreams.toPublisher(
+                    this,
+                    CurrentLocationListener.getInstance(applicationContext)
+                )
+            )
+                .throttleFirst(5, TimeUnit.SECONDS)
+                .subscribe { location ->
+                    if (location != null) {
+                        val latitude = location.latitude.toFloat()
+                        val longitude = location.longitude.toFloat()
 
-                    if (liveLocationSwitch.isChecked) viewModel.loadVenues(latitude, longitude)
+                        if (liveLocationSwitch.isChecked) viewModel.loadVenues(latitude, longitude)
 
-                    defaultSharedPrefs.edit {
-                        putFloat(KEY_LATITUDE, latitude)
-                        putFloat(KEY_LONGITUDE, longitude)
+                        defaultSharedPrefs.edit {
+                            putFloat(KEY_LATITUDE, latitude)
+                            putFloat(KEY_LONGITUDE, longitude)
+                        }
+
+                        d { "Location Changed " + location.latitude + " : " + location.longitude }
                     }
 
-                    d { "Location Changed " + location.latitude + " : " + location.longitude }
                 }
-            }
         )
     }
 
@@ -163,4 +173,8 @@ class MainActivity : AppCompatActivity() {
         onRequestPermissionsResult(requestCode, grantResults)
     }
 
+    override fun onDestroy() {
+        disposables.dispose()
+        super.onDestroy()
+    }
 }

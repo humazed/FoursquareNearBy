@@ -4,4 +4,5 @@
     <string name="loading_error">An Error Occurred While Loading Data!</string>
     <string name="location_permeation_denied">You couldn\'t use the app without accepting the location permeation</string>
     <string name="location_permeation_never_ask_again">You couldn\'t use the app without accepting the location permeation \n you need to go to settings and enable it to use the app</string>
+    <string name="meters">%1$s meters</string>
 </resources>

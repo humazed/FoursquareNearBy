@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        loadVenues()
+        if (!liveLocationSwitch.isChecked) loadVenues()
 
         observableViewModel()
 
@@ -70,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.getVenues().observe(
             this,
             Observer { venues ->
+                d { "getVenues" }
                 adapter = setupRecyclerView(venues)
             }
         )
@@ -77,6 +78,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.hasError().observe(
             this,
             Observer { hasError ->
+                d { "hasError" }
                 venuesRecyclerView.visible = !hasError
 
                 errorTv.visible = hasError
@@ -87,6 +89,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.isLoading().observe(
             this,
             Observer { isLoading ->
+                d { "isLoading" }
                 swipeLayout.isRefreshing = isLoading
                 errorTv.visible = !isLoading
                 venuesRecyclerView.visible = !isLoading
@@ -109,41 +112,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupLiveLocationSwitch() {
         liveLocationSwitch.isChecked = defaultSharedPrefs.getBoolean(KEY_LIVE_LOCATION, true)
+
         liveLocationSwitch.onCheckedChange { _, isChecked ->
             if (isChecked) loadVenues()
             defaultSharedPrefs.edit {
                 putBoolean(KEY_LIVE_LOCATION, isChecked)
             }
         }
-    }
-
-    @NeedsPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-    fun getLocationUpdates() {
-        disposables.add(
-            Flowable.fromPublisher(
-                LiveDataReactiveStreams.toPublisher(
-                    this,
-                    CurrentLocationListener.getInstance(applicationContext)
-                )
-            )
-                .throttleFirst(5, TimeUnit.SECONDS)
-                .subscribe { location ->
-                    if (location != null) {
-                        val latitude = location.latitude.toFloat()
-                        val longitude = location.longitude.toFloat()
-
-                        if (liveLocationSwitch.isChecked) viewModel.loadVenues(latitude, longitude)
-
-                        defaultSharedPrefs.edit {
-                            putFloat(KEY_LATITUDE, latitude)
-                            putFloat(KEY_LONGITUDE, longitude)
-                        }
-
-                        d { "Location Changed " + location.latitude + " : " + location.longitude }
-                    }
-
-                }
-        )
     }
 
     private fun setupNetworkErrorView() {
@@ -174,6 +149,40 @@ class MainActivity : AppCompatActivity() {
         networkErrorView.setRetryListener { loadVenues() }
     }
 
+
+    @NeedsPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+    fun getLocationUpdates() {
+        disposables.add(
+            Flowable.fromPublisher(
+                LiveDataReactiveStreams.toPublisher(
+                    this,
+                    CurrentLocationListener.getInstance(applicationContext)
+                )
+            )
+                .throttleFirst(10, TimeUnit.SECONDS)
+                .subscribe { location ->
+                    if (location != null) {
+                        val latitude = location.latitude.toFloat()
+                        val longitude = location.longitude.toFloat()
+
+                        //don't reload id the latLng didn't change
+                        val oldLatitude = defaultSharedPrefs.getFloat(KEY_LATITUDE, 0f)
+                        val oldLongitude = defaultSharedPrefs.getFloat(KEY_LONGITUDE, 0f)
+                        if (liveLocationSwitch.isChecked &&
+                            (oldLatitude != latitude || oldLongitude != longitude)
+                        ) {
+                            viewModel.loadVenues(latitude, longitude)
+                        }
+
+                        defaultSharedPrefs.edit {
+                            putFloat(KEY_LATITUDE, latitude)
+                            putFloat(KEY_LONGITUDE, longitude)
+                        }
+                    }
+
+                }
+        )
+    }
 
     @OnPermissionDenied(Manifest.permission.ACCESS_FINE_LOCATION)
     fun onLocationDenied() {

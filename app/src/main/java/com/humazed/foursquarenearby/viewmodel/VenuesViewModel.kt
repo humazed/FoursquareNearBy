@@ -40,6 +40,7 @@ class VenuesViewModel(application: Application) : AndroidViewModel(application) 
         d { "latitude = [${latitude}], longitude = [${longitude}]" }
         if (!applicationContext.isConnected()) {
             loading.value = false
+            loadError.value = false
             return
         }
 

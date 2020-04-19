@@ -17,7 +17,7 @@ class VenuesAdapter(
             item?.apply {
                 nameTv.text = name
                 categoryTv.text = category
-                distanceTv.text = distance
+                distanceTv.text = mContext.getString(R.string.meters, distance)
 
                 image.load(imageUrl)
             }

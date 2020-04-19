@@ -3,6 +3,7 @@ package com.humazed.foursquarenearby.api
 import android.content.Context
 import androidx.annotation.Keep
 import androidx.fragment.app.Fragment
+import com.facebook.stetho.okhttp3.StethoInterceptor
 import com.google.gson.Gson
 import com.humazed.foursquarenearby.model.explore.ExploreResponse
 import com.humazed.foursquarenearby.model.photos.PhotosResponse
@@ -45,6 +46,7 @@ val Context.api: VenuesService
             logging.level = HttpLoggingInterceptor.Level.BASIC
             val okHttpClient = OkHttpClient.Builder()
                 .addInterceptor(logging)
+//                .addNetworkInterceptor(StethoInterceptor())
                 .addInterceptor(AuthInterceptor())
                 .cache(cache)
                 .readTimeout(5, TimeUnit.MINUTES)

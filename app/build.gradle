@@ -88,6 +88,9 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:3.12.1'
     implementation 'com.squareup.okhttp3:logging-interceptor:3.12.1'
 
+    implementation 'com.facebook.stetho:stetho:1.5.1'
+    implementation 'com.facebook.stetho:stetho-okhttp3:1.5.1'
+
     implementation 'com.github.humazed:NetworkErrorView:1.0.2'
 
     // Testing dependencies

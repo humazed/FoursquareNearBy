@@ -146,7 +146,11 @@ class MainActivity : AppCompatActivity() {
             }
             .apply { disposables.add(this) }
 
-        networkErrorView.setRetryListener { loadVenues() }
+        networkErrorView.setRetryListener {
+            networkErrorView.hide()
+            networkErrorView.show()
+            loadVenues()
+        }
     }
 
 

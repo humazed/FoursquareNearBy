@@ -4,9 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.humazed.foursquarenearby.api.SIZE
+import com.humazed.foursquarenearby.SIZE
 import com.humazed.foursquarenearby.api.api
 import com.humazed.foursquarenearby.model.explore.Venue
+import humazed.github.com.kotlinandroidutils.d
 import humazed.github.com.kotlinandroidutils.er
 import io.reactivex.Observable
 import io.reactivex.Single
@@ -29,10 +30,11 @@ class VenuesViewModel(application: Application) : AndroidViewModel(application) 
     fun isLoading(): LiveData<Boolean> = loading
     fun hasError(): LiveData<Boolean> = loadError
 
-    fun loadVenues() {
+    fun loadVenues(latitude: Float, longitude: Float) {
+        d { "latitude = [${latitude}], longitude = [${longitude}]" }
         loading.value = true
         disposables.add(
-            applicationContext.api.getVenues("24.7135517,46.675295", 1000.0, 2)
+            applicationContext.api.getVenues("$latitude,$longitude", 1000.0, 2)
                 .map { exploreResponse -> exploreResponse.response?.groups?.get(0)?.items?.mapNotNull { it.venue } }
                 .flattenAsObservable { it }
                 .flatMap { venue ->
@@ -69,7 +71,7 @@ class VenuesViewModel(application: Application) : AndroidViewModel(application) 
         return applicationContext.api.getVenuePhotos(venue.id)
             .map { photoResponse ->
                 if (photoResponse.response?.photos?.items?.isNotEmpty() == true) {
-                    return@map "${photoResponse.response.photos.items[0].prefix}${SIZE}${photoResponse.response.photos.items[0].suffix}"
+                    return@map "${photoResponse.response.photos.items[0].prefix}$SIZE${photoResponse.response.photos.items[0].suffix}"
                 } else {
                     return@map ""
                 }

@@ -55,10 +55,15 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.2.0'
     implementation "androidx.fragment:fragment-ktx:1.2.4"
 
-    implementation 'io.reactivex.rxjava2:rxjava:2.2.8'
+    def permissionsdispatcher_version = "4.7.0"
+    implementation "org.permissionsdispatcher:permissionsdispatcher:${permissionsdispatcher_version}"
+    kapt "org.permissionsdispatcher:permissionsdispatcher-processor:${permissionsdispatcher_version}"
+
+    implementation 'io.reactivex.rxjava2:rxjava:2.2.12'
     implementation 'io.reactivex.rxjava2:rxkotlin:2.3.0'
     implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
 
+    implementation 'com.google.android.gms:play-services-location:17.0.0'
 
     def room_version = "2.2.5"
     implementation "androidx.room:room-runtime:$room_version"

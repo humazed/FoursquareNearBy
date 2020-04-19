@@ -13,12 +13,11 @@ import com.humazed.foursquarenearby.persestance.VenuesRepository
 import humazed.github.com.kotlinandroidutils.d
 import humazed.github.com.kotlinandroidutils.er
 import humazed.github.com.kotlinandroidutils.isConnected
-import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.functions.BiFunction
-import io.reactivex.observers.DisposableSingleObserver
+import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.schedulers.Schedulers
 
 class VenuesViewModel(application: Application) : AndroidViewModel(application) {
@@ -45,37 +44,37 @@ class VenuesViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         loading.value = true
-        disposables.add(
-            applicationContext.api.getVenues("$latitude,$longitude", 1000.0, 1)
-                .map { exploreResponse -> exploreResponse.response?.groups?.get(0)?.items?.mapNotNull { it.venue } }
-                .flattenAsObservable { it }
-                .flatMap { venue ->
-                    Observable.zip(
-                        Observable.just(venue),
-                        getPhoto(venue).toObservable(),
-                        BiFunction<Venue, String, Pair<Venue, String>> { first, second -> first to second }
-                    )
+
+        applicationContext.api.getVenues("$latitude,$longitude", 1000.0, 1)
+            .map { exploreResponse ->
+                exploreResponse.response?.groups?.get(0)?.items?.mapNotNull { it.venue }
+            }
+            .flattenAsObservable { it }
+            .flatMapSingle { venue ->
+                Single.zip(
+                    Single.just(venue),
+                    getPhoto(venue),
+                    BiFunction<Venue, String, Pair<Venue, String>> { first, second -> first to second }
+                )
+            }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .toList()
+            .subscribeBy(
+                onSuccess = { value ->
+                    loadError.value = false
+
+                    venuesRepository.saveVenues(value)
+
+                    loading.value = false
+                },
+                onError = { e ->
+                    er { e }
+                    loadError.value = true
+                    loading.value = false
                 }
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .toList()
-                .subscribeWith(object :
-                    DisposableSingleObserver<List<Pair<Venue, String>>>() {
-                    override fun onSuccess(value: List<Pair<Venue, String>>) {
-                        loadError.value = false
-
-                        venuesRepository.saveVenues(value)
-
-                        loading.value = false
-                    }
-
-                    override fun onError(e: Throwable) {
-                        er { e }
-                        loadError.value = true
-                        loading.value = false
-                    }
-                })
-        )
+            )
+            .apply { disposables.add(this) }
     }
 
     // this doesn't always work because of the rate limiting of the api.

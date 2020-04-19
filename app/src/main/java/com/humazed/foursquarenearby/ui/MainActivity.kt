@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.LiveDataReactiveStreams
 import androidx.lifecycle.Observer
 import com.chad.library.adapter.base.BaseQuickAdapter
+import com.github.pwittchen.reactivenetwork.library.rx2.ReactiveNetwork
 import com.humazed.foursquarenearby.KEY_LATITUDE
 import com.humazed.foursquarenearby.KEY_LIVE_LOCATION
 import com.humazed.foursquarenearby.KEY_LONGITUDE
@@ -18,7 +19,9 @@ import com.humazed.foursquarenearby.persestance.VenueEntity
 import com.humazed.foursquarenearby.viewmodel.VenuesViewModel
 import humazed.github.com.kotlinandroidutils.*
 import io.reactivex.Flowable
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.sdk27.coroutines.onCheckedChange
 import org.jetbrains.anko.support.v4.onRefresh
@@ -34,6 +37,8 @@ class MainActivity : AppCompatActivity() {
 
     private val disposables = CompositeDisposable()
 
+    private var adapter: BaseQuickAdapter<VenueEntity, KBaseViewHolder>? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -47,6 +52,8 @@ class MainActivity : AppCompatActivity() {
         setupLiveLocationSwitch()
 
         getLocationUpdatesWithPermissionCheck()
+
+        setupNetworkErrorView()
     }
 
 
@@ -63,7 +70,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.getVenues().observe(
             this,
             Observer { venues ->
-                setupRecyclerView(venues)
+                adapter = setupRecyclerView(venues)
             }
         )
 
@@ -138,6 +145,35 @@ class MainActivity : AppCompatActivity() {
                 }
         )
     }
+
+    private fun setupNetworkErrorView() {
+        ReactiveNetwork.observeNetworkConnectivity(applicationContext)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe { connectivity ->
+                d { connectivity.toString() }
+                viewModel.getVenues().observe(this,
+                    Observer { venues ->
+                        if (connectivity.available()) {
+                            networkErrorView.hide()
+                            venuesRecyclerView.show()
+
+                            if (venues.isNullOrEmpty()) loadVenues()
+
+                        } else if (venues.isNullOrEmpty()) {
+                            networkErrorView.show()
+                            errorTv.hide()
+                            swipeLayout.isRefreshing = false
+                            adapter?.emptyView?.hide()
+                        }
+                    }
+                )
+            }
+            .apply { disposables.add(this) }
+
+        networkErrorView.setRetryListener { loadVenues() }
+    }
+
 
     @OnPermissionDenied(Manifest.permission.ACCESS_FINE_LOCATION)
     fun onLocationDenied() {

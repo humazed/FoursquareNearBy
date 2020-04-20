@@ -46,8 +46,8 @@ class VenuesViewModel(application: Application) : AndroidViewModel(application) 
 
         loading.value = true
 
-        // the limit is 2 because the rate limiting of the api so we don't use up the quota.
-        applicationContext.api.getVenues("$latitude,$longitude", 1000.0, 2)
+        // the limit is 5 because the rate limiting of the api so we don't use up the quota.
+        applicationContext.api.getVenues("$latitude,$longitude", 1000.0, 5)
             .map { exploreResponse ->
                 exploreResponse.response?.groups?.get(0)?.items?.mapNotNull { it.venue }
             }
